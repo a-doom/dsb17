@@ -22,18 +22,34 @@ class DATASET_MODE:
     TEST = "Test"
 
 def get_filename_queues(dataset_dir, mode):
-    filenames =[]
+    filenames = []
+    for fname in os.listdir(dataset_dir):
+        path = os.path.join(dataset_dir, fname)
+        if not os.path.isdir(path):
+            filenames.append(fname)
+
+    test_percent = 0.1
+    valid_percent = 0.1
+
+    test_size = max(int(round(len(filenames) * test_percent)), 1)
+    valid_size = max(int(round(len(filenames) * valid_percent)), 1)
+
+    test = filenames[:test_size]
+    valid = filenames[test_size:(test_size + valid_size)]
+    train = filenames[(test_size + valid_size):]
+
+    result = []
     if mode == DATASET_MODE.TRAIN:
-        filenames = [os.path.join(dataset_dir, DATASET_TRAIN)]
+        result = train
     elif mode == DATASET_MODE.TEST:
-        filenames = [os.path.join(dataset_dir, DATASET_TEST)]
+        result = test
     elif mode == DATASET_MODE.VALID:
-        filenames = [os.path.join(dataset_dir, DATASET_VALID)]
+        result = valid
 
     for f in filenames:
         if not tf.gfile.Exists(f):
             raise ValueError('Failed to find file: ' + f)
-    return filenames
+    return result
 
 
 def read_data(filename_queue, batch_size, is_train):

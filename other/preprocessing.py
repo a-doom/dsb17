@@ -14,6 +14,7 @@ import argparse
 
 MIN_BOUND = -1000.0
 MAX_BOUND = 400.0
+WIDTH = LENGTH = HEIGHT = 400
 
 # from https://www.kaggle.com/gzuidhof/data-science-bowl-2017/full-preprocessing-tutorial
 
@@ -184,17 +185,23 @@ def change_paddings(image, new_size=(400, 400, 400)):
     return image
 
 
-def convert_dicoms(dicom_path, labels_file, result_file=None, log_file=None):
+def convert_dicoms(dicom_path, labels_file, result_folder=None, log_file=None, max_samples_in_file=3):
     labels = pd.read_csv(labels_file)
     result_def_name = "dicom_" + datetime.datetime.now().strftime('%y_%m_%d_%H_%M')
 
-    if result_file is None:
-        result_file = os.path.join(dicom_path, (result_def_name + ".bin"))
-        print("Result file: {0}".format(result_file))
+    if result_folder is None:
+        result_folder = os.path.join(dicom_path, (result_def_name))
+        print("Result folder: {0}".format(result_folder))
+    if not os.path.exists(result_folder):
+        os.makedirs(result_folder)
 
     if log_file is None:
         log_file = os.path.join(dicom_path, (result_def_name + ".log"))
         print("Log file: {0}".format(log_file))
+    if not os.path.exists(os.path.dirname(os.path.abspath(log_file))):
+        os.makedirs(os.path.dirname(os.path.abspath(log_file)))
+
+    result_filename = os.path.join(result_folder, str(0).zfill(4) + ".bin")
 
     logging.basicConfig(
         filename=log_file,
@@ -207,6 +214,7 @@ def convert_dicoms(dicom_path, labels_file, result_file=None, log_file=None):
     total_saved = 0
     total_count = 0
     total = len(patients)
+    filename_count = 0
 
     bar = progressbar.ProgressBar(
         maxval=total,
@@ -235,7 +243,7 @@ def convert_dicoms(dicom_path, labels_file, result_file=None, log_file=None):
                 continue
 
             # read slices
-            path = dicom_path + patient_name
+            path = os.path.join(dicom_path, patient_name)
             patient = load_scan(path)
             patient_pixels = get_pixels_hu(patient)
             show_shapes(patient_pixels, patient)
@@ -248,16 +256,21 @@ def convert_dicoms(dicom_path, labels_file, result_file=None, log_file=None):
             result = crop(result * segmented_lungs_fill_dilated)
             logging.info("result size:\t{0}".format(result.shape))
 
-            result = change_paddings(result, new_size=(400, 400, 400))
+            result = change_paddings(result, new_size=(LENGTH, HEIGHT, WIDTH))
             logging.info("size after add paddings:\t{0}".format(result.shape))
 
             result, shift = shift_to_center(result)
             if shift is not None:
                 logging.info("shift: {0}".format(shift))
 
-            with open(result_file, 'ab+') as f:
+            if(total_saved % max_samples_in_file == 0):
+                filename_count += 1
+                result_filename = os.path.join(result_folder, str(filename_count).zfill(4) + ".bin")
+
+            with open(result_filename, 'ab+') as f:
                 f.write(label.tobytes())
                 f.write(result.tobytes())
+                logging.info("save to {0}".format(result_filename))
 
             total_saved += 1
             logging.info("done, {0}\n".format(str(datetime.datetime.now() - start)))
@@ -276,8 +289,12 @@ def main():
     parser.add_argument('--labels_file', '-l', dest='labels_file', required=True)
     parser.add_argument('--result_file', '-r', dest='result_file')
     parser.add_argument('--log_file', '--log', dest='log_file')
+    parser.add_argument('--max_samples', '--m', dest='max_samples_in_file', default=3)
     args = parser.parse_args()
-    convert_dicoms(args.dicom_path, args.labels_file, args.result_file, args.log_file)
+    convert_dicoms(
+        args.dicom_path, args.labels_file,
+        args.result_file, args.log_file,
+        args.max_samples_in_file)
 
 
 if __name__ == '__main__':
