@@ -2,41 +2,49 @@ import tensorflow as tf
 import tensorflow.contrib.learn.python.learn as learn
 import specific_models as sm
 import os
-import dataset_cifar_10
+import dataset_dsb17
 import time
+import logging
+import datetime
 
 tf.logging.set_verbosity(tf.logging.INFO)
+fh = logging.FileHandler("log_" + datetime.datetime.now().strftime('%y_%m_%d_%H_%M') + ".log")
+fh.setLevel(logging.INFO)
+fh.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+tf.logging._logger.addHandler(fh)
+
+def loginfo(msg):
+    tf.logging._logger.info(msg)
+
 
 models = {"rnp_d110_w350" : sm.res_net_pyramidal_model_d110_w350,
           "wrn_d28_w10": sm.res_net_wide_model_d28_w10,
           "rnp_d80_w256_k3_dr05": sm.res_net_pyramidal_model_d80_w256_k3_dr05,
+          "rnp_d6_w32_k1_dr05": sm.res_net_pyramidal_model_d6_w32_k1_dr05,
           "rnp_d10_w64_k2_dr05": sm.res_net_pyramidal_model_d10_w64_k2_dr05}
 
 
 def train(model, dataset_dir, model_dir, batch_size, train_steps,
           is_evaluate_accuracy, valid_every_n_steps, early_stopping_rounds):
     def input_fn_test():
-        return dataset_cifar_10.inputs(
+        return dataset_dsb17.inputs(
             data_dir=dataset_dir,
-            mode=dataset_cifar_10.DATASET_MODE.TEST,
-            is_distorted=False,
+            mode=dataset_dsb17.DATASET_MODE.TEST,
             batch_size=batch_size)
 
     def input_fn_train():
-        return dataset_cifar_10.inputs(
+        return dataset_dsb17.inputs(
             data_dir=dataset_dir,
-            mode=dataset_cifar_10.DATASET_MODE.TRAIN,
-            is_distorted=True,
+            mode=dataset_dsb17.DATASET_MODE.TRAIN,
             batch_size=batch_size)
 
     def input_fn_valid():
-        return dataset_cifar_10.inputs(
+        return dataset_dsb17.inputs(
             data_dir=dataset_dir,
-            mode=dataset_cifar_10.DATASET_MODE.VALID,
-            is_distorted=False,
+            mode=dataset_dsb17.DATASET_MODE.VALID,
             batch_size=batch_size)
 
-    print("Create validation monitor")
+    loginfo("Create validation monitor")
     # Monitors
     metrics = {
         'accuracy': learn.metric_spec.MetricSpec(
@@ -50,27 +58,27 @@ def train(model, dataset_dir, model_dir, batch_size, train_steps,
         early_stopping_rounds=early_stopping_rounds,
         metrics=metrics)
 
-    print("Create classifier")
+    loginfo("Create classifier")
     start = time.time()
     classifier = learn.Estimator(model_fn=model, model_dir=model_dir)
 
-    print("Fit model")
+    loginfo("Fit model")
     # Fit model.
     classifier.fit(input_fn=input_fn_train,
                    steps=train_steps,
                    monitors=[validation_monitor])
-    print("Fit model finished. Time: %.03f s" % (time.time() - start))
+    loginfo("Fit model finished. Time: %.03f s" % (time.time() - start))
     start = time.time()
 
     if is_evaluate_accuracy:
-        print("Evaluate accuracy")
+        loginfo("Evaluate accuracy")
         # Evaluate accuracy.
         result = classifier.evaluate(
             input_fn=input_fn_test,
             metrics=metrics)
-        print('Accuracy: {0:f}'.format(result['accuracy']))
-        print("Time: %.03f s" % (time.time() - start))
-    print("done")
+        loginfo('Accuracy: {0:f}'.format(result['accuracy']))
+        loginfo("Time: %.03f s" % (time.time() - start))
+    loginfo("done")
 
 
 FLAGS = tf.app.flags.FLAGS

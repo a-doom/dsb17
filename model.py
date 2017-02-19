@@ -48,12 +48,12 @@ def res_net(
         keep_prob=1.0,
         scope=None):
     with tf.variable_scope(scope, 'drl_mp', [features]):
-
         with tf.variable_scope('init'):
+            first_output = np.array(res_blocks_size).flatten()[0]
             net = features
             net = layers.convolution(
                 inputs=net,
-                num_outputs=16,
+                num_outputs=first_output,
                 kernel_size=[3, 3, 3],
                 normalizer_fn=layers.batch_norm,
                 normalizer_params={'is_training': is_training},
@@ -190,9 +190,10 @@ def residual_dropout(
     From https://arxiv.org/abs/1603.09382
     """
     with tf.variable_scope(scope, 'residual_dropout', [inputs]) as sc:
-        inputs_shape_list = inputs.get_shape().as_list()
-        noise_shape = [1] * len(inputs_shape_list)
-        noise_shape[0] = inputs_shape_list[0]
+        shape = tf.shape(inputs)
+        shape_static = inputs.get_shape()
+        noise_shape = [1] * (len(shape_static) - 1)
+        noise_shape =  tf.concat(shape[0], [noise_shape])
 
         return layers.dropout(
             inputs=inputs,

@@ -56,17 +56,22 @@ def read_data(filename_queue, batch_size, is_train):
     image_bytes = IMAGE_DEPTH * IMAGE_HEIGHT * IMAGE_WIDTH * 2
     record_bytes = IMAGE_LABEL_BYTES + image_bytes
 
+    def parse_fn(record):
+        record = tf.decode_raw(record, tf.int8)
+        record = tf.reshape(record, [record_bytes])
+        record = tf.concat(0, [record])
+        return record
+
     examples = learn.read_batch_examples(
         file_pattern=filename_queue,
         batch_size=batch_size,
         reader=lambda: tf.FixedLengthRecordReader(record_bytes=record_bytes),
         num_threads=NUM_READ_THREADS,
-        num_epochs=1 if not is_train else None)
+        parse_fn=parse_fn,
+        num_epochs=1 if not is_train else 10)
 
     if(isinstance(examples, tuple) and len(examples) == 2):
         _, examples = examples
-
-    examples = tf.decode_raw(examples, tf.int8)
 
     labels = tf.slice(examples, [0, 0], [-1, IMAGE_LABEL_BYTES])
     labels = tf.cast(labels, tf.int64)
