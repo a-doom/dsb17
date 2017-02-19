@@ -40,7 +40,6 @@ def main():
     images, labels = dataset_dsb17.inputs(
         data_dir=sys.argv[1],
         mode=dataset_dsb17.DATASET_MODE.VALID,
-        is_distorted=False,
         batch_size=1)
     predictions, loss, train_op = sm.res_net_pyramidal_model_d10_w64_k2_dr05(images, labels, "not_train")
     _calc_model_params_count()

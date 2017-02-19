@@ -26,7 +26,7 @@ def get_filename_queues(dataset_dir, mode):
     for fname in os.listdir(dataset_dir):
         path = os.path.join(dataset_dir, fname)
         if not os.path.isdir(path):
-            filenames.append(fname)
+            filenames.append(path)
 
     test_percent = 0.1
     valid_percent = 0.1
@@ -46,7 +46,7 @@ def get_filename_queues(dataset_dir, mode):
     elif mode == DATASET_MODE.VALID:
         result = valid
 
-    for f in filenames:
+    for f in result:
         if not tf.gfile.Exists(f):
             raise ValueError('Failed to find file: ' + f)
     return result
@@ -66,17 +66,21 @@ def read_data(filename_queue, batch_size, is_train):
     if(isinstance(examples, tuple) and len(examples) == 2):
         _, examples = examples
 
+    examples = tf.decode_raw(examples, tf.int8)
+
     labels = tf.slice(examples, [0, 0], [-1, IMAGE_LABEL_BYTES])
-    labels = tf.cast(labels, tf.int16)
+    labels = tf.cast(labels, tf.int64)
 
     images = tf.slice(examples, [0, IMAGE_LABEL_BYTES], [-1, image_bytes]),
+    images = tf.reshape(images, [-1, IMAGE_HEIGHT, IMAGE_WIDTH, IMAGE_DEPTH, 2])
     images = tf.bitcast(images, tf.int16)
-    images = tf.reshape(images, [-1, IMAGE_HEIGHT, IMAGE_WIDTH, IMAGE_DEPTH])
+    # add channel dim
     images = tf.expand_dims(images, -1)
+    images = tf.cast(images, tf.float32)
 
     return images, labels
 
 
-def inputs(data_dir, mode, is_distorted, batch_size):
+def inputs(data_dir, mode, batch_size):
     filename_queue = get_filename_queues(data_dir, mode)
     return read_data(filename_queue, batch_size, mode == DATASET_MODE.TRAIN)

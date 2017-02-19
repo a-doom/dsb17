@@ -226,7 +226,7 @@ def res_net_model(
     prediction = tf.nn.softmax(net)
     predicted = tf.argmax(prediction, 1)
     predicted = tf.reshape(predicted, [-1, 1])
-    accuracy = tf.equal(predicted, tf.cast(targets, tf.int64))
+    accuracy = tf.equal(predicted, targets)
     predictions = {'prob': prediction, 'class': predicted, 'accuracy': accuracy}
 
     targets = tf.one_hot(targets, depth=num_classes)
