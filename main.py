@@ -8,10 +8,7 @@ import logging
 import datetime
 
 tf.logging.set_verbosity(tf.logging.INFO)
-fh = logging.FileHandler("log_" + datetime.datetime.now().strftime('%y_%m_%d_%H_%M') + ".log")
-fh.setLevel(logging.INFO)
-fh.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
-tf.logging._logger.addHandler(fh)
+
 
 def loginfo(msg):
     tf.logging._logger.info(msg)
@@ -83,34 +80,40 @@ def train(model, dataset_dir, model_dir, batch_size, train_steps,
 
 FLAGS = tf.app.flags.FLAGS
 tf.app.flags.DEFINE_string(
-    'dataset_dir', None, 'The directory where train/test files are saved.')
+    'dataset_dir', None, 'Directory for storing datasets')
 tf.app.flags.DEFINE_string(
-    'models_dir', None, 'The directory where models saved.')
+    'models_dir', None, 'Directory for storing models')
 tf.app.flags.DEFINE_string('model_name', None, 'The model name.')
-tf.app.flags.DEFINE_integer('batch_size', 32,
-                            """Number of images to process in a batch.""")
-tf.app.flags.DEFINE_integer('train_steps', 10,
-                            """Number of steps for training.""")
-tf.app.flags.DEFINE_bool('is_evaluate_accuracy', False,
-                         """bool, Evaluate accuracy""")
-tf.app.flags.DEFINE_integer('valid_every_n_steps', 300,
-                            """int, run validation monitor every n steps""")
-tf.app.flags.DEFINE_integer('early_stopping_rounds', 500,
-                            """int, early stopping rounds""")
-tf.app.flags.DEFINE_string('optimizer_type', 'SGD',
-                            """optimizer type (SGD, Adam, etc)""")
-tf.app.flags.DEFINE_float('learning_rate', 0.001,
-                            """learning rate )""")
+tf.app.flags.DEFINE_integer(
+    'batch_size', 32, """int, the number of images in a batch.""")
+tf.app.flags.DEFINE_integer(
+    'train_steps', 10, """int, the number of training steps""")
+tf.app.flags.DEFINE_bool(
+    'is_evaluate_accuracy', False, """bool, Evaluate accuracy""")
+tf.app.flags.DEFINE_integer(
+    'valid_every_n_steps', 300, """int, run validation monitor every n steps""")
+tf.app.flags.DEFINE_integer(
+    'early_stopping_rounds', 500, """int, early stopping rounds""")
+tf.app.flags.DEFINE_string(
+    'optimizer_type', 'SGD', """Optimizer type (SGD|Adam)""")
+tf.app.flags.DEFINE_float(
+    'learning_rate', 0.001, """Learning rate )""")
+tf.app.flags.DEFINE_string(
+    'log_dir', None, 'Directory for storing logs')
+
+
+def check_dir(path, name):
+    if path is None:
+        raise ValueError('You must supply the {0}'.format(name))
+    if not os.path.isdir(path):
+        raise ValueError('Wrong dataset directory {0}'.format(path))
 
 
 def main(_):
-    if not FLAGS.dataset_dir:
-        raise ValueError('You must supply the dataset directory with --dataset_dir')
-    if not os.path.isdir(FLAGS.dataset_dir):
-        raise ValueError('Wrong dataset directory')
-
-    if not FLAGS.models_dir:
-        raise ValueError('You must supply the models directory with --models_dir')
+    check_dir(FLAGS.dataset_dir, "dataset_dir")
+    check_dir(FLAGS.models_dir, "models_dir")
+    FLAGS.log_dir = FLAGS.log_dir or FLAGS.models_dir
+    check_dir(FLAGS.log_dir, "log_dir")
 
     if not FLAGS.model_name:
         raise ValueError('You must supply the model name with --model_name')
@@ -120,6 +123,16 @@ def main(_):
     model_dir = os.path.join(FLAGS.models_dir, FLAGS.model_name)
     if not os.path.exists(model_dir):
         os.makedirs(model_dir)
+
+    log_dir = os.path.join(FLAGS.log_dir, FLAGS.model_name)
+    if not os.path.exists(log_dir):
+        os.makedirs(log_dir)
+    log_name = "log_" + datetime.datetime.now().strftime('%y_%m_%d_%H_%M') + ".log"
+
+    fh = logging.FileHandler(os.path.join(log_dir, log_name))
+    fh.setLevel(logging.INFO)
+    fh.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+    tf.logging._logger.addHandler(fh)
 
     model = sm.convert_model(
         model=models[FLAGS.model_name],
