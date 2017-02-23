@@ -11,6 +11,7 @@ import datetime
 import logging
 import progressbar
 import argparse
+import shutil
 
 MIN_BOUND = -1000.0
 MAX_BOUND = 400.0
@@ -185,7 +186,8 @@ def change_paddings(image, new_size=(400, 400, 400)):
     return image
 
 
-def convert_dicoms(dicom_path, labels_file, result_folder=None, log_file=None, max_samples_in_file=3):
+def convert_dicoms(dicom_path, labels_file, result_folder=None, log_file=None,
+                   max_samples_in_file=3, first_number=1, is_delete_old_files=False):
     labels = pd.read_csv(labels_file)
     result_def_name = "dicom_" + datetime.datetime.now().strftime('%y_%m_%d_%H_%M')
 
@@ -214,7 +216,7 @@ def convert_dicoms(dicom_path, labels_file, result_folder=None, log_file=None, m
     total_saved = 0
     total_count = 0
     total = len(patients)
-    filename_count = 0
+    filename_count = first_number
 
     bar = progressbar.ProgressBar(
         maxval=total,
@@ -264,13 +266,17 @@ def convert_dicoms(dicom_path, labels_file, result_folder=None, log_file=None, m
                 logging.info("shift: {0}".format(shift))
 
             if(total_saved % max_samples_in_file == 0):
-                filename_count += 1
                 result_filename = os.path.join(result_folder, str(filename_count).zfill(4) + ".bin")
+                filename_count += 1
 
             with open(result_filename, 'ab+') as f:
                 f.write(label.tobytes())
                 f.write(result.tobytes())
                 logging.info("save to {0}".format(result_filename))
+
+            if is_delete_old_files:
+                logging.info("remove {0}".format(path))
+                shutil.rmtree(path)
 
             total_saved += 1
             logging.info("done, {0}\n".format(str(datetime.datetime.now() - start)))
@@ -290,11 +296,15 @@ def main():
     parser.add_argument('--result_file', '-r', dest='result_file')
     parser.add_argument('--log_file', '--log', dest='log_file')
     parser.add_argument('--max_samples', '--m', dest='max_samples_in_file', default=3)
+    parser.add_argument('--first_number', '--n', dest='first_number', default=1)
+    parser.add_argument('--is_delete_old_files', '--df', dest='is_delete_old_files', default=0)
     args = parser.parse_args()
     convert_dicoms(
         args.dicom_path, args.labels_file,
         args.result_file, args.log_file,
-        args.max_samples_in_file)
+        max_samples_in_file=int(args.max_samples_in_file),
+        first_number=int(args.first_number),
+        is_delete_old_files=(int(args.is_delete_old_files)==1))
 
 
 if __name__ == '__main__':
