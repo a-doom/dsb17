@@ -10,9 +10,9 @@ DATASET_VALID = 'valid.bin'
 DATASET_TEST = 'test.bin'
 
 IMAGE_LABEL_BYTES = 1
-IMAGE_HEIGHT = 400
-IMAGE_WIDTH = 400
-IMAGE_DEPTH = 400
+IMAGE_HEIGHT = 200
+IMAGE_WIDTH = 200
+IMAGE_DEPTH = 200
 
 NUM_READ_THREADS = 2
 
@@ -56,10 +56,24 @@ def read_data(filename_queue, batch_size, is_train):
     image_bytes = IMAGE_DEPTH * IMAGE_HEIGHT * IMAGE_WIDTH * 2
     record_bytes = IMAGE_LABEL_BYTES + image_bytes
 
+    image_float32 = IMAGE_DEPTH * IMAGE_HEIGHT * IMAGE_WIDTH
+    record_float32 = IMAGE_LABEL_BYTES + image_float32
+
     def parse_fn(record):
         record = tf.decode_raw(record, tf.int8)
         record = tf.reshape(record, [record_bytes])
-        record = tf.concat(0, [record])
+
+        label = tf.slice(record, [0], [IMAGE_LABEL_BYTES])
+        label = tf.cast(label, tf.float32)
+
+        image = tf.slice(record, [IMAGE_LABEL_BYTES], [image_bytes]),
+        image = tf.reshape(image, [IMAGE_HEIGHT, IMAGE_WIDTH, IMAGE_DEPTH, 2])
+        image = tf.bitcast(image, tf.int16)
+        image = tf.cast(image, tf.float32)
+        image = tf.image.per_image_standardization(image)
+        image = tf.reshape(image, [image_float32])
+
+        record = tf.concat(0, [label, image])
         return record
 
     examples = learn.read_batch_examples(
@@ -74,14 +88,11 @@ def read_data(filename_queue, batch_size, is_train):
         _, examples = examples
 
     labels = tf.slice(examples, [0, 0], [-1, IMAGE_LABEL_BYTES])
-    labels = tf.cast(labels, tf.int64)
+    labels = tf.cast(labels, tf.int32)
 
-    images = tf.slice(examples, [0, IMAGE_LABEL_BYTES], [-1, image_bytes]),
-    images = tf.reshape(images, [-1, IMAGE_HEIGHT, IMAGE_WIDTH, IMAGE_DEPTH, 2])
-    images = tf.bitcast(images, tf.int16)
     # add channel dim
-    images = tf.expand_dims(images, -1)
-    images = tf.cast(images, tf.float32)
+    images = tf.slice(examples, [0, IMAGE_LABEL_BYTES], [-1, image_float32]),
+    images = tf.reshape(images, [-1, IMAGE_HEIGHT, IMAGE_WIDTH, IMAGE_DEPTH])
 
     return images, labels
 

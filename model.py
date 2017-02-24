@@ -112,6 +112,21 @@ class _KeepProbCalc:
         self.block_passed_num = 0
 
 
+def add_multiplier(net):
+    # with tf.variable_scope(None, 'add_multiplier', [net]) as sc:
+    #     dtype = net.dtype.base_dtype
+    #     weights_collections = utils.get_variable_collections(None, 'weights')
+    #     tf.ops.
+    #     weights = tf.variables.model_variable('weights',
+    #                                        shape=weights_shape,
+    #                                        dtype=dtype,
+    #                                        initializer=tf.uniform_unit_scaling_initializer(factor=1.0),
+    #                                        regularizer=None,
+    #                                        collections=weights_collections,
+    #                                        trainable=True)
+    return net
+
+
 def multi_residual(
         inputs,
         out_filter,
@@ -128,6 +143,7 @@ def multi_residual(
         stride = 2 if is_half_size else 1
         orig_x = subsample(orig_x, stride, 'shortcut')
         orig_x = pad_last_dimension(orig_x, out_filter)
+        orig_x = add_multiplier(orig_x)
 
         result = orig_x
         res_func_result = res_func(
@@ -137,7 +153,8 @@ def multi_residual(
             is_half_size=is_half_size,
             scope=scope + "_1")
 
-        result += residual_dropout(res_func_result, keep_prob, is_training)
+        rd = residual_dropout(res_func_result, keep_prob, is_training)
+        result += add_multiplier(rd)
 
         if(multi_k > 1):
             for k in range(multi_k - 1):
