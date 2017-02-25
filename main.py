@@ -18,6 +18,7 @@ models = {"rnp_d110_w350" : sm.res_net_pyramidal_model_d110_w350,
           "wrn_d28_w10": sm.res_net_wide_model_d28_w10,
           "rnp_d80_w256_k3_dr05": sm.res_net_pyramidal_model_d80_w256_k3_dr05,
           "rnp_d6_w32_k1_dr05": sm.res_net_pyramidal_model_d6_w32_k1_dr05,
+          "rnp_d6_w32_k2_dr05": sm.res_net_pyramidal_model_d6_w32_k2_dr05,
           "rnp_d10_w64_k2_dr05": sm.res_net_pyramidal_model_d10_w64_k2_dr05}
 
 
@@ -41,6 +42,7 @@ def train(model, dataset_dir, model_dir, batch_size, train_steps,
             mode=dataset_dsb17.DATASET_MODE.VALID,
             batch_size=batch_size)
 
+    loginfo("Start")
     loginfo("Create validation monitor")
     # Monitors
     metrics = {

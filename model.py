@@ -3,28 +3,16 @@ from tensorflow.contrib.layers.python.layers import utils
 from tensorflow.contrib import layers
 import pandas as pd
 import numpy as np
+import ops
 
 
 def subsample(inputs, stride, scope=None):
-    """Subsamples the input along the spatial dimensions.
-
-    From https://github.com/tensorflow/models/blob/master/slim/nets/resnet_utils.py
-
-    Args:
-        inputs: A `Tensor` of size [batch, height_in, width_in, channels].
-        factor: The subsampling factor.
-        scope: Optional variable_scope.
-
-    Returns:
-        output: A `Tensor` of size [batch, height_out, width_out, channels] with the
-            input, either intact (if factor == 1) or subsampled (if factor > 1).
-    """
     if stride == 1:
         return inputs
     else:
         return tf.nn.max_pool3d(
             input=inputs,
-            ksize=[1, 1, 1, 1, 1],
+            ksize=[1, stride, stride, stride, 1],
             strides=[1, stride, stride, stride, 1],
             padding='VALID',
             name=scope)
@@ -46,6 +34,7 @@ def res_net(
         multi_k=1,
         is_training=True,
         keep_prob=1.0,
+        is_add_multiplier=False,
         scope=None):
     with tf.variable_scope(scope, 'drl_mp', [features]):
         with tf.variable_scope('init'):
@@ -76,7 +65,8 @@ def res_net(
                         scope=residual_scope,
                         keep_prob=kpc.get_next_decr_prob(),
                         is_training=is_training,
-                        is_half_size=is_half_size)
+                        is_half_size=is_half_size,
+                        is_add_multiplier=is_add_multiplier)
 
         with tf.variable_scope('unit_last'):
             net = layers.batch_norm(
@@ -112,21 +102,6 @@ class _KeepProbCalc:
         self.block_passed_num = 0
 
 
-def add_multiplier(net):
-    # with tf.variable_scope(None, 'add_multiplier', [net]) as sc:
-    #     dtype = net.dtype.base_dtype
-    #     weights_collections = utils.get_variable_collections(None, 'weights')
-    #     tf.ops.
-    #     weights = tf.variables.model_variable('weights',
-    #                                        shape=weights_shape,
-    #                                        dtype=dtype,
-    #                                        initializer=tf.uniform_unit_scaling_initializer(factor=1.0),
-    #                                        regularizer=None,
-    #                                        collections=weights_collections,
-    #                                        trainable=True)
-    return net
-
-
 def multi_residual(
         inputs,
         out_filter,
@@ -135,88 +110,29 @@ def multi_residual(
         scope,
         keep_prob=1.0,
         is_training=True,
-        is_half_size=False):
-
+        is_half_size=False,
+        is_add_multiplier=False):
     with tf.variable_scope(scope, 'multi_residual', [inputs]):
-
         orig_x = inputs
         stride = 2 if is_half_size else 1
         orig_x = subsample(orig_x, stride, 'shortcut')
         orig_x = pad_last_dimension(orig_x, out_filter)
-        orig_x = add_multiplier(orig_x)
+        if is_add_multiplier:
+            orig_x = ops.add_multiplier(orig_x)
 
         result = orig_x
-        res_func_result = res_func(
-            inputs=inputs,
-            out_filter=out_filter,
-            is_training=is_training,
-            is_half_size=is_half_size,
-            scope=scope + "_1")
-
-        rd = residual_dropout(res_func_result, keep_prob, is_training)
-        result += add_multiplier(rd)
-
-        if(multi_k > 1):
-            for k in range(multi_k - 1):
-                res_func_result = res_func(
-                    inputs=inputs,
-                    out_filter=out_filter,
-                    is_training=is_training,
-                    is_half_size=is_half_size,
-                    scope=str.format('{0}_{1}', scope, (k + 2)))
-                result += residual_dropout(res_func_result, keep_prob, is_training)
-
-    return result
-
-
-def _residual(
-        inputs,
-        out_filter,
-        is_training=True,
-        is_half_size=False,
-        scope=None):
-
-        with tf.variable_scope(scope, 'multi_residual', [inputs]):
-            net = layers.batch_norm(
-                inputs=inputs,
-                activation_fn=tf.nn.relu,
-                is_training=is_training)
-            net = layers.convolution(
-                inputs=net,
-                num_outputs=out_filter,
-                kernel_size=[3, 3, 3],
-                stride=2 if is_half_size else 1,
-                normalizer_fn=layers.batch_norm,
-                normalizer_params={'is_training': is_training},
-                activation_fn=tf.nn.relu)
-            net = layers.convolution(
-                inputs=net,
-                num_outputs=out_filter,
-                kernel_size=[3, 3, 3],
-                normalizer_fn=layers.batch_norm,
-                normalizer_params={'is_training': is_training})
-            return net
-
-
-def residual_dropout(
-        inputs,
-        keep_prob=0.5,
-        is_training=True,
-        scope=None):
-    """
-    From https://arxiv.org/abs/1603.09382
-    """
-    with tf.variable_scope(scope, 'residual_dropout', [inputs]) as sc:
-        shape = tf.shape(inputs)
-        shape_static = inputs.get_shape()
-        noise_shape = [1] * (len(shape_static) - 1)
-        noise_shape =  tf.concat(shape[0], [noise_shape])
-
-        return layers.dropout(
-            inputs=inputs,
-            keep_prob=keep_prob,
-            noise_shape=noise_shape,
-            is_training=is_training)
+        for k in range(multi_k):
+            res_func_result = res_func(
+                input=inputs,
+                out_filter=out_filter,
+                is_training=is_training,
+                is_half_size=is_half_size,
+                scope=str.format('{0}_{1}', scope, (k + 1)))
+            res_func_result = ops.residual_dropout(res_func_result, keep_prob, is_training)
+            if is_add_multiplier:
+                res_func_result = ops.add_multiplier(res_func_result)
+            result += res_func_result
+        return result
 
 
 def res_net_model(
@@ -229,16 +145,18 @@ def res_net_model(
         keep_prob=1.0,
         optimizer_type='SGD',
         learning_rate=0.001,
+        is_add_multiplier=False,
         scope=None):
 
     net = res_net(
         features=features,
         res_blocks_size=res_blocks_size,
         num_classes=num_classes,
-        res_func=_residual,
+        res_func=ops.residual_v1,
         multi_k=multi_k,
         is_training=mode == tf.contrib.learn.ModeKeys.TRAIN,
         keep_prob=keep_prob,
+        is_add_multiplier=is_add_multiplier,
         scope=scope)
 
     prediction = tf.nn.softmax(net)
@@ -280,6 +198,7 @@ def res_net_pyramidal_model(
         keep_prob=1.0,
         optimizer_type='SGD',
         learning_rate=0.001,
+        is_add_multiplier=False,
         groups=None,
         scope=None):
     """ Deep Pyramidal Residual Networks
@@ -304,6 +223,7 @@ def res_net_pyramidal_model(
         optimizer_type=optimizer_type,
         learning_rate=learning_rate,
         keep_prob=keep_prob,
+        is_add_multiplier=is_add_multiplier,
         scope=scope)
 
 
@@ -317,6 +237,7 @@ def res_net_wide_model(
         keep_prob=1.0,
         optimizer_type='SGD',
         learning_rate=0.001,
+        is_add_multiplier=False,
         groups=None,
         scope=None):
     """ Wide Residual Networks
@@ -338,4 +259,5 @@ def res_net_wide_model(
         optimizer_type=optimizer_type,
         learning_rate=learning_rate,
         keep_prob=keep_prob,
+        is_add_multiplier=is_add_multiplier,
         scope=scope)

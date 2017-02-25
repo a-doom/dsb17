@@ -10,9 +10,7 @@ DATASET_VALID = 'valid.bin'
 DATASET_TEST = 'test.bin'
 
 IMAGE_LABEL_BYTES = 1
-IMAGE_HEIGHT = 200
-IMAGE_WIDTH = 200
-IMAGE_DEPTH = 200
+IMAGE_HEIGHT = IMAGE_WIDTH = IMAGE_DEPTH = 200
 
 NUM_READ_THREADS = 2
 
@@ -25,8 +23,11 @@ def get_filename_queues(dataset_dir, mode):
     filenames = []
     for fname in os.listdir(dataset_dir):
         path = os.path.join(dataset_dir, fname)
-        if not os.path.isdir(path):
+        if not os.path.isdir(path) and path.endswith(".bin"):
             filenames.append(path)
+
+    if len(filenames) == 0:
+        raise ValueError("Wrong dataset dir: {0}".format(dataset_dir))
 
     test_percent = 0.1
     valid_percent = 0.1
@@ -88,11 +89,12 @@ def read_data(filename_queue, batch_size, is_train):
         _, examples = examples
 
     labels = tf.slice(examples, [0, 0], [-1, IMAGE_LABEL_BYTES])
-    labels = tf.cast(labels, tf.int32)
+    labels = tf.cast(labels, tf.int64)
 
     # add channel dim
     images = tf.slice(examples, [0, IMAGE_LABEL_BYTES], [-1, image_float32]),
     images = tf.reshape(images, [-1, IMAGE_HEIGHT, IMAGE_WIDTH, IMAGE_DEPTH])
+    images = tf.expand_dims(images, -1)
 
     return images, labels
 
