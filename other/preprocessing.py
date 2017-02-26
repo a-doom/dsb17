@@ -191,7 +191,7 @@ def convert_dicom(dicom_path, width=300, height=300, length=300, is_half_reduce=
     patient = load_scan(dicom_path)
     patient_pixels = get_pixels_hu(patient)
     show_shapes(patient_pixels, patient)
-    result, spacing = resample(patient_pixels, patient, [1, 0.75, 1])
+    result, spacing = resample(patient_pixels, patient, [1.25, 1, 1.25])
 
     # create mask
     segmented_lungs_fill = segment_lung_mask(result, True)
@@ -296,7 +296,7 @@ def convert_dicoms(dicom_path, labels_file, result_folder=None, log_file=None,
 
             total_saved += 1
             logging.info("done, {0}\n".format(str(datetime.datetime.now() - start)))
-        except Exception as e:
+        except:
             logging.exception("Error with {0}".format(patient_name))
         finally:
             total_count += 1

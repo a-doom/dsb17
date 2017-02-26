@@ -78,7 +78,7 @@ def res_net_pyramidal_model_d6_w32_k1_dr05(
         keep_prob=0.5,
         optimizer_type=optimizer_type,
         learning_rate=learning_rate,
-        groups=[4, 8, 16, 32],
+        groups=[16, 16, 32, 32],
         scope="rnp_d6_w32_k1_dr05")
 
 
@@ -98,7 +98,7 @@ def res_net_pyramidal_model_d6_w32_k2_dr05(
         keep_prob=0.5,
         optimizer_type=optimizer_type,
         learning_rate=learning_rate,
-        groups=[4, 8, 16, 32],
+        groups=[16, 16, 32, 32],
         scope="rnp_d6_w32_k2_dr05")
 
 

@@ -39,14 +39,39 @@ def res_net(
     with tf.variable_scope(scope, 'drl_mp', [features]):
         with tf.variable_scope('init'):
             first_output = np.array(res_blocks_size).flatten()[0]
+            if(first_output < 16):
+                raise ValueError("The first output size should be equal or greater than 16: {0}".format(first_output))
+
             net = features
+
+            net = tf.nn.max_pool3d(
+                input=net,
+                ksize=[1, 3, 3, 3, 1],
+                strides=[1, 2, 2, 2, 1],
+                padding='VALID',
+                name=scope)
+
             net = layers.convolution(
                 inputs=net,
-                num_outputs=first_output,
-                kernel_size=[3, 3, 3],
+                num_outputs=4,
+                kernel_size=[1, 1, 1],
+                stride=2,
                 normalizer_fn=layers.batch_norm,
-                normalizer_params={'is_training': is_training},
-                activation_fn=tf.nn.relu)
+                normalizer_params={'is_training': is_training})
+
+            net = layers.convolution(
+                inputs=net,
+                num_outputs=8,
+                kernel_size=[3, 3, 3],
+                stride=2,
+                normalizer_params={'is_training': is_training})
+
+            net = layers.convolution(
+                inputs=net,
+                num_outputs=16,
+                kernel_size=[3, 3, 3],
+                stride=2,
+                normalizer_params={'is_training': is_training})
 
         kpc = _KeepProbCalc(
             min_keep_prob=keep_prob,
