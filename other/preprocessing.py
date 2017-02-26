@@ -17,7 +17,6 @@ random.seed(a=datetime.date.today().__hash__())
 
 MIN_BOUND = -1000.0
 MAX_BOUND = 400.0
-WIDTH = LENGTH = HEIGHT = 400
 
 # from https://www.kaggle.com/gzuidhof/data-science-bowl-2017/full-preprocessing-tutorial
 
@@ -188,11 +187,11 @@ def change_paddings(image, new_size=(400, 400, 400)):
     return image
 
 
-def convert_dicom(dicom_path):
+def convert_dicom(dicom_path, width=300, height=300, length=300, is_half_reduce=False):
     patient = load_scan(dicom_path)
     patient_pixels = get_pixels_hu(patient)
     show_shapes(patient_pixels, patient)
-    result, spacing = resample(patient_pixels, patient, [1, 1, 1])
+    result, spacing = resample(patient_pixels, patient, [1, 0.75, 1])
 
     # create mask
     segmented_lungs_fill = segment_lung_mask(result, True)
@@ -201,20 +200,21 @@ def convert_dicom(dicom_path):
     result = crop(result * segmented_lungs_fill_dilated)
     logging.info("result size:\t{0}".format(result.shape))
 
-    result = change_paddings(result, new_size=(LENGTH, HEIGHT, WIDTH))
+    result = change_paddings(result, new_size=(height, length, width))
     logging.info("size after add paddings:\t{0}".format(result.shape))
 
     result, shift = shift_to_center(result)
     if shift is not None:
         logging.info("shift: {0}".format(shift))
 
-    result = measure.block_reduce(result, block_size=(2, 2, 2), func=np.max)
+    if is_half_reduce:
+        result = measure.block_reduce(result, block_size=(2, 2, 2), func=np.max)
     return result
 
 
 def convert_dicoms(dicom_path, labels_file, result_folder=None, log_file=None,
                    batch_size=3, total_proc_number=1, current_proc_number=1,
-                   is_delete_old_files=False):
+                   is_delete_old_files=False, width=300, height=300, length=300, is_half_reduce=False):
     labels = pd.read_csv(labels_file)
     result_def_name = "dicom_" + datetime.datetime.now().strftime('%y_%m_%d')
 
@@ -279,7 +279,7 @@ def convert_dicoms(dicom_path, labels_file, result_folder=None, log_file=None,
 
             # read slices
             path = os.path.join(dicom_path, patient_name)
-            result = convert_dicom(path)
+            result = convert_dicom(path, width=width, height=height, length=length, is_half_reduce=is_half_reduce)
 
             if(total_saved % batch_size == 0):
                 result_filename = os.path.join(result_folder, str(filename_count).zfill(4) + ".bin")
@@ -327,6 +327,10 @@ def main():
     parser.add_argument('--total_proc_number', '--tpn', dest='total_proc_number', default=1)
     parser.add_argument('--current_proc_number', '--cpn', dest='current_proc_number', default=1)
     parser.add_argument('--is_delete_old_files', '--df', dest='is_delete_old_files', default=0)
+    parser.add_argument('--width', '--wd', dest='width', default=300)
+    parser.add_argument('--height', '--he', dest='height', default=300)
+    parser.add_argument('--length', '--ln', dest='length', default=300)
+    parser.add_argument('--is_half_reduce', '--hr', dest='is_half_reduce', default=0)
     args = parser.parse_args()
     convert_dicoms(
         args.dicom_path, args.labels_file,
@@ -334,7 +338,11 @@ def main():
         batch_size=int(args.batch_size),
         total_proc_number=int(args.total_proc_number),
         current_proc_number=int(args.current_proc_number),
-        is_delete_old_files=(int(args.is_delete_old_files)==1))
+        width=int(args.width),
+        height=int(args.height),
+        length=int(args.length),
+        is_half_reduce=(args.is_half_reduce == 1),
+        is_delete_old_files=(args.is_delete_old_files == 1))
 
 
 if __name__ == '__main__':

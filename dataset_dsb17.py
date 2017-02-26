@@ -10,7 +10,7 @@ DATASET_VALID = 'valid.bin'
 DATASET_TEST = 'test.bin'
 
 IMAGE_LABEL_BYTES = 1
-IMAGE_HEIGHT = IMAGE_WIDTH = IMAGE_DEPTH = 200
+IMAGE_HEIGHT = IMAGE_WIDTH = IMAGE_LENGTH = 200
 
 NUM_READ_THREADS = 2
 
@@ -54,10 +54,10 @@ def get_filename_queues(dataset_dir, mode):
 
 
 def read_data(filename_queue, batch_size, is_train):
-    image_bytes = IMAGE_DEPTH * IMAGE_HEIGHT * IMAGE_WIDTH * 2
+    image_bytes = IMAGE_LENGTH * IMAGE_HEIGHT * IMAGE_WIDTH * 2
     record_bytes = IMAGE_LABEL_BYTES + image_bytes
 
-    image_float32 = IMAGE_DEPTH * IMAGE_HEIGHT * IMAGE_WIDTH
+    image_float32 = IMAGE_LENGTH * IMAGE_HEIGHT * IMAGE_WIDTH
     record_float32 = IMAGE_LABEL_BYTES + image_float32
 
     def parse_fn(record):
@@ -68,7 +68,7 @@ def read_data(filename_queue, batch_size, is_train):
         label = tf.cast(label, tf.float32)
 
         image = tf.slice(record, [IMAGE_LABEL_BYTES], [image_bytes]),
-        image = tf.reshape(image, [IMAGE_HEIGHT, IMAGE_WIDTH, IMAGE_DEPTH, 2])
+        image = tf.reshape(image, [IMAGE_HEIGHT, IMAGE_LENGTH, IMAGE_WIDTH, 2])
         image = tf.bitcast(image, tf.int16)
         image = tf.cast(image, tf.float32)
         image = tf.image.per_image_standardization(image)
@@ -93,7 +93,7 @@ def read_data(filename_queue, batch_size, is_train):
 
     # add channel dim
     images = tf.slice(examples, [0, IMAGE_LABEL_BYTES], [-1, image_float32]),
-    images = tf.reshape(images, [-1, IMAGE_HEIGHT, IMAGE_WIDTH, IMAGE_DEPTH])
+    images = tf.reshape(images, [-1, IMAGE_HEIGHT, IMAGE_LENGTH, IMAGE_WIDTH])
     images = tf.expand_dims(images, -1)
 
     return images, labels
