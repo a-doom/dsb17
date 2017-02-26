@@ -128,9 +128,9 @@ def multi_residual(
                 is_training=is_training,
                 is_half_size=is_half_size,
                 scope=str.format('{0}_{1}', scope, (k + 1)))
-            res_func_result = ops.residual_dropout(res_func_result, keep_prob, is_training)
             if is_add_multiplier:
                 res_func_result = ops.add_multiplier(res_func_result)
+            res_func_result = ops.residual_dropout(res_func_result, keep_prob, is_training)
             result += res_func_result
         return result
 
