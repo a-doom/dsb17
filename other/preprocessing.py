@@ -13,7 +13,7 @@ import progressbar
 import argparse
 import shutil
 
-random.seed(a=datetime.date.today().__hash__())
+random.seed(a=42)
 
 MIN_BOUND = -1000.0
 MAX_BOUND = 400.0
@@ -224,6 +224,10 @@ def convert_dicoms(dicom_path, labels_file, result_folder=None, log_file=None,
     if not os.path.exists(result_folder):
         os.makedirs(result_folder)
 
+    result_folder_submission = os.path.join(result_folder, 'submission/')
+    if not os.path.exists(result_folder_submission):
+        os.makedirs(result_folder_submission)
+
     if log_file is None:
         log_folder = result_folder or dicom_path
         log_file = os.path.join(
@@ -249,7 +253,9 @@ def convert_dicoms(dicom_path, labels_file, result_folder=None, log_file=None,
     total_saved = 0
     total_count = 0
     total = len(patients)
-    result_filename = os.path.join(result_folder, str(filename_count).zfill(4) + ".bin")
+
+    ds_main = DataSaver(batch_size=batch_size, save_path=result_folder, filename_count=filename_count)
+    ds_subm = DataSaver(batch_size=batch_size, save_path=result_folder_submission, filename_count=filename_count)
 
     bar = progressbar.ProgressBar(
         maxval=total,
@@ -273,22 +279,16 @@ def convert_dicoms(dicom_path, labels_file, result_folder=None, log_file=None,
             start = datetime.datetime.now()
             logging.info("Patient {0}...".format(patient_name))
             label = get_label(patient_name)
-            if label is None:
-                logging.warning("Patient {0} is not found!".format(patient_name))
-                continue
 
             # read slices
             path = os.path.join(dicom_path, patient_name)
             result = convert_dicom(path, width=width, height=height, length=length, is_half_reduce=is_half_reduce)
 
-            if(total_saved % batch_size == 0):
-                result_filename = os.path.join(result_folder, str(filename_count).zfill(4) + ".bin")
-                filename_count += 1
-
-            with open(result_filename, 'ab+') as f:
-                f.write(label.tobytes())
-                f.write(result.tobytes())
-                logging.info("save to {0}".format(result_filename))
+            if label is not None:
+                ds_main.save(label=label, image=result)
+            else:
+                ds_subm.save(label=None, image=result)
+                logging.info("is submission: {0}".format(patient_name))
 
             if is_delete_old_files:
                 logging.info("remove {0}".format(path))
@@ -301,8 +301,40 @@ def convert_dicoms(dicom_path, labels_file, result_folder=None, log_file=None,
         finally:
             total_count += 1
             bar.update(total_count)
+    ds_main.close()
+    ds_subm.close()
     bar.finish()
     print("Done. {0} files saved.".format(total_saved))
+
+
+class DataSaver:
+    def __init__(self, batch_size, save_path, filename_count):
+        self.batch_size = batch_size
+        self.save_path = save_path
+        self.cash = []
+        self.filename_count = filename_count
+
+    def get_filename(self):
+        return os.path.join(self.save_path, str(self.filename_count).zfill(4) + ".bin")
+
+    def save(self, label, image):
+        self.cash.append((
+            label.tobytes() if label is not None else np.array([False]),
+            image.tobytes()))
+        if len(self.cash) >= self.batch_size:
+            self._save()
+        logging.info("save to {0}".format(self.get_filename()))
+
+    def _save(self):
+        with open(self.get_filename(), 'ab+') as f:
+            for c in self.cash:
+                f.write(c[0])
+                f.write(c[1])
+        self.filename_count += 1
+        self.cash = []
+
+    def close(self):
+        self._save()
 
 
 def crop_path(paths, total_proc_number, current_proc_number, batch_size):
@@ -341,8 +373,8 @@ def main():
         width=int(args.width),
         height=int(args.height),
         length=int(args.length),
-        is_half_reduce=(args.is_half_reduce == 1),
-        is_delete_old_files=(args.is_delete_old_files == 1))
+        is_half_reduce=(int(args.is_half_reduce) == 1),
+        is_delete_old_files=(int(args.is_delete_old_files) == 1))
 
 
 if __name__ == '__main__':

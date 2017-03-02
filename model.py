@@ -14,7 +14,7 @@ def subsample(inputs, stride, scope=None):
             input=inputs,
             ksize=[1, stride, stride, stride, 1],
             strides=[1, stride, stride, stride, 1],
-            padding='VALID',
+            padding='SAME',
             name=scope)
 
 
@@ -37,41 +37,37 @@ def res_net(
         is_add_multiplier=False,
         scope=None):
     with tf.variable_scope(scope, 'drl_mp', [features]):
+        # 128 / 1
+        net = features
+
         with tf.variable_scope('init'):
             first_output = np.array(res_blocks_size).flatten()[0]
             if(first_output < 16):
                 raise ValueError("The first output size should be equal or greater than 16: {0}".format(first_output))
 
-            net = features
-
-            net = tf.nn.max_pool3d(
-                input=net,
-                ksize=[1, 3, 3, 3, 1],
-                strides=[1, 2, 2, 2, 1],
-                padding='VALID',
-                name=scope)
-
+            # 64 / 4
             net = layers.convolution(
                 inputs=net,
                 num_outputs=4,
                 kernel_size=[1, 1, 1],
-                stride=2,
-                normalizer_fn=layers.batch_norm,
-                normalizer_params={'is_training': is_training})
+                stride=2)
 
-            net = layers.convolution(
-                inputs=net,
-                num_outputs=8,
-                kernel_size=[3, 3, 3],
-                stride=2,
-                normalizer_params={'is_training': is_training})
+            # 32 / 8
+            net = ops.resnet_reduction(
+                input=net,
+                kernel_size=3,
+                is_training=is_training)
 
-            net = layers.convolution(
+            # 16 / 16
+            net = ops.resnet_reduction(
+                input=net,
+                kernel_size=3,
+                is_training=is_training)
+
+            net = layers.batch_norm(
                 inputs=net,
-                num_outputs=16,
-                kernel_size=[3, 3, 3],
-                stride=2,
-                normalizer_params={'is_training': is_training})
+                activation_fn=tf.nn.relu,
+                is_training=is_training)
 
         kpc = _KeepProbCalc(
             min_keep_prob=keep_prob,
@@ -84,7 +80,7 @@ def res_net(
                     residual_scope = str.format('res_{0}_{1}', (block_num + 1), (b_num + 1))
                     net = multi_residual(
                         inputs=net,
-                        out_filter=b,
+                        num_outputs=b,
                         multi_k=multi_k,
                         res_func=res_func,
                         scope=residual_scope,
@@ -129,7 +125,7 @@ class _KeepProbCalc:
 
 def multi_residual(
         inputs,
-        out_filter,
+        num_outputs,
         multi_k,
         res_func,
         scope,
@@ -141,7 +137,7 @@ def multi_residual(
         orig_x = inputs
         stride = 2 if is_half_size else 1
         orig_x = subsample(orig_x, stride, 'shortcut')
-        orig_x = pad_last_dimension(orig_x, out_filter)
+        orig_x = pad_last_dimension(orig_x, num_outputs)
         if is_add_multiplier:
             orig_x = ops.add_multiplier(orig_x)
 
@@ -149,7 +145,7 @@ def multi_residual(
         for k in range(multi_k):
             res_func_result = res_func(
                 input=inputs,
-                out_filter=out_filter,
+                num_outputs=num_outputs,
                 is_training=is_training,
                 is_half_size=is_half_size,
                 scope=str.format('{0}_{1}', scope, (k + 1)))
