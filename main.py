@@ -22,13 +22,16 @@ models = {"rnp_d110_w350" : sm.res_net_pyramidal_model_d110_w350,
           "rnp_d6_w32_k1_dr05": sm.res_net_pyramidal_model_d6_w32_k1_dr05,
           "rnp_d6_w32_k2_dr05": sm.res_net_pyramidal_model_d6_w32_k2_dr05,
 
-          "rnp_d21_w128_k2_dr05": sm.res_net_pyramidal_model_d21_w128_k2_dr05,
-          "rnp_d21_w128_k4_dr05": sm.res_net_pyramidal_model_d21_w128_k4_dr05,
-
-
           "rnp_d12_w64_k2_dr05": sm.res_net_pyramidal_model_d12_w64_k2_dr05,
           "rnp_d12_w128_k2_dr05": sm.res_net_pyramidal_model_d12_w128_k2_dr05,
-          "rnp_d12_w256_k2_dr05": sm.res_net_pyramidal_model_d12_w256_k2_dr05}
+          "rnp_d12_w256_k2_dr05": sm.res_net_pyramidal_model_d12_w256_k2_dr05,
+          "rnp_d12_w256_k4_dr05": sm.res_net_pyramidal_model_d12_w256_k4_dr05,
+
+          "rnp_d21_w128_k2_dr05": sm.res_net_pyramidal_model_d21_w128_k2_dr05,
+          "rnp_d21_w128_k4_dr05": sm.res_net_pyramidal_model_d21_w128_k4_dr05,
+          "rnp_d21_w256_k2_dr05": sm.res_net_pyramidal_model_d21_w256_k2_dr05,
+          "rnp_d21_w256_k4_dr05": sm.res_net_pyramidal_model_d21_w256_k4_dr05,
+          }
 
 
 def train(model, dataset_dir, model_dir, batch_size, train_steps,
