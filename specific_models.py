@@ -182,6 +182,27 @@ def res_net_pyramidal_model_d12_w256_k2_dr05(
         scope="rnp_d12_w256_k2_dr05")
 
 
+def res_net_pyramidal_model_d12_w256_k2_dr05_ds(
+        features,
+        targets,
+        mode,
+        optimizer_type='SGD',
+        learning_rate=0.001):
+    return model.res_net_pyramidal_model(
+        features=features,
+        targets=targets,
+        mode=mode,
+        num_classes=2,
+        num_blocks=int(12/3),
+        multi_k=2,
+        keep_prob=0.5,
+        optimizer_type=optimizer_type,
+        learning_rate=learning_rate,
+        groups=[16, 32, 128, 256],
+        is_double_size=True,
+        scope="rnp_d12_w256_k2_dr05_ds")
+
+
 def res_net_pyramidal_model_d12_w256_k4_dr05(
         features,
         targets,
@@ -200,6 +221,88 @@ def res_net_pyramidal_model_d12_w256_k4_dr05(
         learning_rate=learning_rate,
         groups=[16, 32, 128, 256],
         scope="rnp_d12_w256_k4_dr05")
+
+
+def res_net_pyramidal_model_d12_w1024_k2_dr05(
+        features,
+        targets,
+        mode,
+        optimizer_type='SGD',
+        learning_rate=0.001):
+    return model.res_net_pyramidal_model(
+        features=features,
+        targets=targets,
+        mode=mode,
+        num_classes=2,
+        num_blocks=int(12/3),
+        multi_k=2,
+        keep_prob=0.5,
+        optimizer_type=optimizer_type,
+        learning_rate=learning_rate,
+        groups=[16, 128, 512, 1024],
+        scope="rnp_d12_w1024_k2_dr05")
+
+
+def res_net_pyramidal_model_d12_w1024_k4_dr05(
+        features,
+        targets,
+        mode,
+        optimizer_type='SGD',
+        learning_rate=0.001):
+    return model.res_net_pyramidal_model(
+        features=features,
+        targets=targets,
+        mode=mode,
+        num_classes=2,
+        num_blocks=int(12/3),
+        multi_k=4,
+        keep_prob=0.5,
+        optimizer_type=optimizer_type,
+        learning_rate=learning_rate,
+        groups=[16, 128, 512, 1024],
+        scope="rnp_d12_w1024_k4_dr05")
+
+
+
+
+def res_net_pyramidal_model_d12_w512_k2_dr05(
+        features,
+        targets,
+        mode,
+        optimizer_type='SGD',
+        learning_rate=0.001):
+    return model.res_net_pyramidal_model(
+        features=features,
+        targets=targets,
+        mode=mode,
+        num_classes=2,
+        num_blocks=int(12/3),
+        multi_k=2,
+        keep_prob=0.5,
+        optimizer_type=optimizer_type,
+        learning_rate=learning_rate,
+        groups=[16, 128, 256, 512],
+        scope="rnp_d12_w512_k2_dr05")
+
+
+def res_net_pyramidal_model_d12_w512_k4_dr05(
+        features,
+        targets,
+        mode,
+        optimizer_type='SGD',
+        learning_rate=0.001):
+    return model.res_net_pyramidal_model(
+        features=features,
+        targets=targets,
+        mode=mode,
+        num_classes=2,
+        num_blocks=int(12/3),
+        multi_k=4,
+        keep_prob=0.5,
+        optimizer_type=optimizer_type,
+        learning_rate=learning_rate,
+        groups=[16, 128, 256, 512],
+        scope="rnp_d12_w512_k4_dr05")
 
 
 def res_net_pyramidal_model_d12_w128_k2_dr05(

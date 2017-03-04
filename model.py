@@ -35,6 +35,7 @@ def res_net(
         is_training=True,
         keep_prob=1.0,
         is_add_multiplier=False,
+        is_double_size=False,
         scope=None):
     with tf.variable_scope(scope, 'drl_mp', [features]):
         # 128 / 1
@@ -45,6 +46,11 @@ def res_net(
             if(first_output < 16):
                 raise ValueError("The first output size should be equal or greater than 16: {0}".format(first_output))
 
+            net = layers.batch_norm(
+                inputs=net,
+                activation_fn=tf.nn.relu,
+                is_training=is_training)
+
             # 64 / 4
             net = layers.convolution(
                 inputs=net,
@@ -52,21 +58,17 @@ def res_net(
                 kernel_size=[1, 1, 1],
                 stride=2)
 
-            # 32 / 8
-            net = ops.resnet_reduction(
-                input=net,
-                kernel_size=3,
-                is_training=is_training)
+            if not is_double_size:
+                # 32 / 8
+                net = ops.resnet_reduction(
+                    input=net,
+                    kernel_size=3,
+                    is_training=is_training)
 
             # 16 / 16
             net = ops.resnet_reduction(
                 input=net,
                 kernel_size=3,
-                is_training=is_training)
-
-            net = layers.batch_norm(
-                inputs=net,
-                activation_fn=tf.nn.relu,
                 is_training=is_training)
 
         kpc = _KeepProbCalc(
@@ -167,6 +169,7 @@ def res_net_model(
         optimizer_type='SGD',
         learning_rate=0.001,
         is_add_multiplier=False,
+        is_double_size=False,
         scope=None):
 
     net = res_net(
@@ -178,6 +181,7 @@ def res_net_model(
         is_training=mode == tf.contrib.learn.ModeKeys.TRAIN,
         keep_prob=keep_prob,
         is_add_multiplier=is_add_multiplier,
+        is_double_size=is_double_size,
         scope=scope)
 
     prediction = tf.nn.softmax(net)
@@ -221,6 +225,7 @@ def res_net_pyramidal_model(
         learning_rate=0.001,
         is_add_multiplier=False,
         groups=None,
+        is_double_size=False,
         scope=None):
     """ Deep Pyramidal Residual Networks
     From https://arxiv.org/abs/1610.02915
@@ -245,6 +250,7 @@ def res_net_pyramidal_model(
         learning_rate=learning_rate,
         keep_prob=keep_prob,
         is_add_multiplier=is_add_multiplier,
+        is_double_size=is_double_size,
         scope=scope)
 
 
