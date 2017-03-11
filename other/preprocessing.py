@@ -255,7 +255,7 @@ def convert_dicoms(dicom_path, labels_file, result_folder=None, log_file=None,
     total = len(patients)
 
     ds_main = DataSaver(batch_size=batch_size, save_path=result_folder, filename_count=filename_count)
-    ds_subm = DataSaver(batch_size=batch_size, save_path=result_folder_submission, filename_count=filename_count)
+    ds_subm = DataSaverSubmission(save_path=result_folder_submission)
 
     bar = progressbar.ProgressBar(
         maxval=total,
@@ -287,8 +287,8 @@ def convert_dicoms(dicom_path, labels_file, result_folder=None, log_file=None,
             if label is not None:
                 ds_main.save(label=label, image=result)
             else:
-                ds_subm.save(label=None, image=result)
-                logging.info("is submission: {0}".format(patient_name))
+                ds_subm.save(patient_name=patient_name, image=result)
+                logging.info("it's submission: {0}".format(patient_name))
 
             if is_delete_old_files:
                 logging.info("remove {0}".format(path))
@@ -302,7 +302,6 @@ def convert_dicoms(dicom_path, labels_file, result_folder=None, log_file=None,
             total_count += 1
             bar.update(total_count)
     ds_main.close()
-    ds_subm.close()
     bar.finish()
     print("Done. {0} files saved.".format(total_saved))
 
@@ -335,6 +334,19 @@ class DataSaver:
 
     def close(self):
         self._save()
+
+
+class DataSaverSubmission:
+    def __init__(self, save_path):
+        self.save_path = save_path
+
+    def get_filename(self, patient_name):
+        return os.path.join(self.save_path, patient_name + ".bin")
+
+    def save(self, patient_name, image):
+        with open(self.get_filename(patient_name), 'ab+') as f:
+            f.write(image.tobytes())
+        logging.info("save to {0}".format(self.get_filename(patient_name)))
 
 
 def crop_path(paths, total_proc_number, current_proc_number, batch_size):
