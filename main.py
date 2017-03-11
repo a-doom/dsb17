@@ -1,5 +1,7 @@
 import tensorflow as tf
 import tensorflow.contrib.learn.python.learn as learn
+from tensorflow.contrib.learn.python.learn.metric_spec import MetricSpec
+from tensorflow.contrib.learn.python.learn.estimators.prediction_key import PredictionKey
 import specific_models as sm
 import os
 import dataset_dsb17
@@ -61,18 +63,24 @@ def train(model, dataset_dir, model_dir, batch_size, train_steps,
 
     loginfo("Start")
     loginfo("Create validation monitor")
+
     # Monitors
-    metrics = {
-        'accuracy': learn.metric_spec.MetricSpec(
+    validation_metrics = {
+        "accuracy": MetricSpec(
             metric_fn=tf.contrib.metrics.streaming_accuracy,
-            prediction_key='accuracy')
-    }
+            prediction_key=PredictionKey.CLASSES),
+        "precision": MetricSpec(
+            metric_fn=tf.contrib.metrics.streaming_precision,
+            prediction_key=PredictionKey.CLASSES),
+        "recall": MetricSpec(
+            metric_fn=tf.contrib.metrics.streaming_recall,
+            prediction_key=PredictionKey.CLASSES)}
 
     validation_monitor = learn.monitors.ValidationMonitor(
         input_fn=input_fn_valid,
         every_n_steps=valid_every_n_steps,
         early_stopping_rounds=early_stopping_rounds,
-        metrics=metrics)
+        metrics=validation_metrics)
 
     loginfo("Create classifier")
     start = time.time()
@@ -91,7 +99,7 @@ def train(model, dataset_dir, model_dir, batch_size, train_steps,
         # Evaluate accuracy.
         result = classifier.evaluate(
             input_fn=input_fn_test,
-            metrics=metrics)
+            metrics=validation_metrics)
         loginfo('Accuracy: {0:f}'.format(result['accuracy']))
         loginfo("Time: %.03f s" % (time.time() - start))
     loginfo("done")

@@ -1,6 +1,7 @@
 import tensorflow as tf
 from tensorflow.contrib.layers.python.layers import utils
-from tensorflow.contrib import layers
+from tensorflow.contrib import layers, metrics
+from tensorflow.contrib.learn.python.learn.estimators.prediction_key import PredictionKey
 import pandas as pd
 import numpy as np
 import ops
@@ -184,15 +185,10 @@ def res_net_model(
         is_double_size=is_double_size,
         scope=scope)
 
-    prediction = tf.nn.softmax(net)
-    predicted = tf.argmax(prediction, 1)
-    predicted = tf.reshape(predicted, [-1, 1])
-    accuracy = tf.equal(predicted, targets)
-    predictions = {'prob': prediction, 'class': predicted, 'accuracy': accuracy}
+    predictions = _logits_to_predictions(net)
 
     targets = tf.one_hot(targets, depth=num_classes)
     targets = tf.reshape(targets, [-1, num_classes])
-
     loss = tf.contrib.losses.softmax_cross_entropy(net, targets)
 
     train_op = layers.optimize_loss(
@@ -202,6 +198,13 @@ def res_net_model(
         learning_rate=learning_rate)
 
     return predictions, loss, train_op
+
+
+def _logits_to_predictions(logits):
+    return {
+        PredictionKey.LOGITS: logits,
+        PredictionKey.PROBABILITIES: tf.nn.softmax(logits, name=PredictionKey.PROBABILITIES),
+        PredictionKey.CLASSES: tf.argmax(logits, 1, name=PredictionKey.CLASSES)}
 
 
 def _calc_pyramidal_resnet_blocks(num_start, num_end, num_blocks):
