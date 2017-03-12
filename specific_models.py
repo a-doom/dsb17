@@ -418,3 +418,29 @@ def convert_model(
         return model(features, targets, mode, optimizer_type, learning_rate)
 
     return result_model
+
+
+
+models = {"rnp_d110_w350" :         res_net_pyramidal_model_d110_w350,
+          "wrn_d28_w10":            res_net_wide_model_d28_w10,
+
+          "rnp_d80_w256_k3_dr05":   res_net_pyramidal_model_d80_w256_k3_dr05,
+
+          "rnp_d6_w32_k1_dr05":     res_net_pyramidal_model_d6_w32_k1_dr05,
+          "rnp_d6_w32_k2_dr05":     res_net_pyramidal_model_d6_w32_k2_dr05,
+
+          "rnp_d12_w64_k2_dr05":        res_net_pyramidal_model_d12_w64_k2_dr05,
+          "rnp_d12_w128_k2_dr05":       res_net_pyramidal_model_d12_w128_k2_dr05,
+          "rnp_d12_w256_k2_dr05":       res_net_pyramidal_model_d12_w256_k2_dr05,
+          "rnp_d12_w256_k2_dr05_ds":    res_net_pyramidal_model_d12_w256_k2_dr05_ds,
+          "rnp_d12_w256_k4_dr05":       res_net_pyramidal_model_d12_w256_k4_dr05,
+          "rnp_d12_w512_k2_dr05":       res_net_pyramidal_model_d12_w512_k2_dr05,
+          "rnp_d12_w512_k4_dr05":       res_net_pyramidal_model_d12_w512_k4_dr05,
+          "rnp_d12_w1024_k2_dr05":      res_net_pyramidal_model_d12_w1024_k2_dr05,
+          "rnp_d12_w1024_k4_dr05":      res_net_pyramidal_model_d12_w1024_k4_dr05,
+
+          "rnp_d21_w128_k2_dr05": res_net_pyramidal_model_d21_w128_k2_dr05,
+          "rnp_d21_w128_k4_dr05": res_net_pyramidal_model_d21_w128_k4_dr05,
+          "rnp_d21_w256_k2_dr05": res_net_pyramidal_model_d21_w256_k2_dr05,
+          "rnp_d21_w256_k4_dr05": res_net_pyramidal_model_d21_w256_k4_dr05,
+          }

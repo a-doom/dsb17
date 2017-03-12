@@ -16,31 +16,6 @@ def loginfo(msg):
     tf.logging._logger.info(msg)
 
 
-models = {"rnp_d110_w350" : sm.res_net_pyramidal_model_d110_w350,
-          "wrn_d28_w10": sm.res_net_wide_model_d28_w10,
-
-          "rnp_d80_w256_k3_dr05": sm.res_net_pyramidal_model_d80_w256_k3_dr05,
-
-          "rnp_d6_w32_k1_dr05": sm.res_net_pyramidal_model_d6_w32_k1_dr05,
-          "rnp_d6_w32_k2_dr05": sm.res_net_pyramidal_model_d6_w32_k2_dr05,
-
-          "rnp_d12_w64_k2_dr05":        sm.res_net_pyramidal_model_d12_w64_k2_dr05,
-          "rnp_d12_w128_k2_dr05":       sm.res_net_pyramidal_model_d12_w128_k2_dr05,
-          "rnp_d12_w256_k2_dr05":       sm.res_net_pyramidal_model_d12_w256_k2_dr05,
-          "rnp_d12_w256_k2_dr05_ds":    sm.res_net_pyramidal_model_d12_w256_k2_dr05_ds,
-          "rnp_d12_w256_k4_dr05":       sm.res_net_pyramidal_model_d12_w256_k4_dr05,
-          "rnp_d12_w512_k2_dr05":       sm.res_net_pyramidal_model_d12_w512_k2_dr05,
-          "rnp_d12_w512_k4_dr05":       sm.res_net_pyramidal_model_d12_w512_k4_dr05,
-          "rnp_d12_w1024_k2_dr05":      sm.res_net_pyramidal_model_d12_w1024_k2_dr05,
-          "rnp_d12_w1024_k4_dr05":      sm.res_net_pyramidal_model_d12_w1024_k4_dr05,
-
-          "rnp_d21_w128_k2_dr05": sm.res_net_pyramidal_model_d21_w128_k2_dr05,
-          "rnp_d21_w128_k4_dr05": sm.res_net_pyramidal_model_d21_w128_k4_dr05,
-          "rnp_d21_w256_k2_dr05": sm.res_net_pyramidal_model_d21_w256_k2_dr05,
-          "rnp_d21_w256_k4_dr05": sm.res_net_pyramidal_model_d21_w256_k4_dr05,
-          }
-
-
 def train(model, dataset_dir, model_dir, batch_size, train_steps,
           is_evaluate_accuracy, valid_every_n_steps, early_stopping_rounds):
     def input_fn_test():
@@ -144,7 +119,7 @@ def main(_):
 
     if not FLAGS.model_name:
         raise ValueError('You must supply the model name with --model_name')
-    if FLAGS.model_name is not None and FLAGS.model_name not in models:
+    if FLAGS.model_name is not None and FLAGS.model_name not in sm.models:
         raise ValueError('wrong model name')
 
     model_dir = os.path.join(FLAGS.models_dir, FLAGS.model_name)
@@ -162,7 +137,7 @@ def main(_):
     tf.logging._logger.addHandler(fh)
 
     model = sm.convert_model(
-        model=models[FLAGS.model_name],
+        model=sm.models[FLAGS.model_name],
         optimizer_type=FLAGS.optimizer_type,
         learning_rate=FLAGS.learning_rate)
 
