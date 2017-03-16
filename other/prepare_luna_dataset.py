@@ -1,15 +1,20 @@
 import os
 import shutil
 import argparse
+import pandas as pd
+import logging
 
 RESULT_FOLDER_NAME = "prepared_dicoms"
 
 def is_contains_dicom(root_path):
     if os.path.isdir(root_path):
+        count = 0
         for fname in os.listdir(root_path):
             path = os.path.join(root_path, fname)
             if os.path.isfile(path) and path.endswith(".dcm"):
-                return True
+                count += 1
+        if count > 50:
+            return True
     return False
 
 
@@ -31,33 +36,45 @@ def main():
     print("start")
     parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('--dicom_path', '-d', dest='dicom_path', required=True)
+    parser.add_argument('--annotations', '-a', dest='annotations', required=True)
     args = parser.parse_args()
     dicom_path = args.dicom_path
+    annotations = args.annotations
 
-    if dicom_path is None:
-        raise ValueError('You must supply the {0}'.format(dicom_path))
     if not os.path.isdir(dicom_path):
         raise ValueError('Wrong dataset directory {0}'.format(dicom_path))
+
+    if not os.path.isfile(annotations) and not annotations.endswith(".csv"):
+        raise ValueError('Wrong annotations directory {0}'.format(annotations))
+
+    dicom_path_list = os.listdir(dicom_path)
 
     result_path = os.path.join(dicom_path, RESULT_FOLDER_NAME)
     if not os.path.exists(result_path):
         os.makedirs(result_path)
 
-    for fname in os.listdir(dicom_path):
+    logger = logging.getLogger()
+    logger.setLevel(logging.INFO)
+    fh = logging.FileHandler(os.path.join(result_path, 'prepare_time_dataset.log'))
+    fh.setLevel(logging.INFO)
+    logger.addHandler(fh)
+    logger.info("id,cancer")
+
+    annotations = pd.read_csv(annotations, index_col=0)
+
+    for fname in dicom_path_list:
         path = os.path.join(dicom_path, fname)
-        pathxml = path + ".xml"
 
         dicom_folders = get_dicom_folders(path)
-        if dicom_folders is not None and len(dicom_folders) > 0 and os.path.isfile(pathxml):
-            is_have_nodule = 'noduleID' in open(pathxml).read()
+        for df in dicom_folders:
+            dicom_label = os.path.basename(os.path.normpath(df))
+            is_have_nodule = dicom_label in annotations.index
             is_have_nodule = 1 if is_have_nodule else 0
-            i = 0
-            for df in dicom_folders:
-                sample_name = "{0}_{1}".format(fname, i)
-                new_path = os.path.join(result_path, sample_name)
+
+            new_path = os.path.join(result_path, dicom_label)
+            if not os.path.exists(new_path):
                 shutil.move(df, new_path)
-                i += 1
-                print("{0};{1}".format(sample_name, is_have_nodule))
+                logger.info("{0},{1}".format(dicom_label, is_have_nodule))
 
     print("done")
 
