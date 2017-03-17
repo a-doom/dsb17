@@ -3,6 +3,7 @@ import tensorflow as tf
 import tarfile
 import os
 import tensorflow.contrib.learn.python.learn
+# import numpy as np
 
 
 DATASET_TRAIN = 'train.bin'
@@ -11,6 +12,13 @@ DATASET_TEST = 'test.bin'
 
 IMAGE_LABEL_BYTES = 1
 IMAGE_HEIGHT = IMAGE_WIDTH = IMAGE_LENGTH = 128
+# IMAGE_HEIGHT = IMAGE_WIDTH = IMAGE_LENGTH = 10
+
+image_bytes = IMAGE_LENGTH * IMAGE_HEIGHT * IMAGE_WIDTH * 2
+record_bytes = IMAGE_LABEL_BYTES + image_bytes
+image_float32 = IMAGE_LENGTH * IMAGE_HEIGHT * IMAGE_WIDTH
+record_float32 = IMAGE_LABEL_BYTES + image_float32
+
 
 NUM_READ_THREADS = 2
 
@@ -18,12 +26,32 @@ class DATASET_MODE:
     TRAIN = "Train"
     VALID = "Valid"
     TEST = "Test"
+    ALL = "All"
+
+
+def parse_fn(record):
+    record = tf.decode_raw(record, tf.int8)
+    record = tf.reshape(record, [record_bytes])
+
+    label = tf.slice(record, [0], [IMAGE_LABEL_BYTES])
+    label = tf.cast(label, tf.float32)
+
+    image = tf.slice(record, [IMAGE_LABEL_BYTES], [image_bytes]),
+    image = tf.reshape(image, [IMAGE_HEIGHT, IMAGE_LENGTH, IMAGE_WIDTH, 2])
+    image = tf.bitcast(image, tf.int16)
+    image = tf.cast(image, tf.float32)
+    image = tf.image.per_image_standardization(image)
+    image = tf.reshape(image, [image_float32])
+
+    record = tf.concat(0, [label, image])
+    return record
+
 
 def get_filename_queues(dataset_dir, mode):
     filenames = []
     for fname in os.listdir(dataset_dir):
         path = os.path.join(dataset_dir, fname)
-        if not os.path.isdir(path) and path.endswith(".bin"):
+        if os.path.isfile(path) and path.endswith(".bin"):
             filenames.append(path)
 
     if len(filenames) == 0:
@@ -46,6 +74,8 @@ def get_filename_queues(dataset_dir, mode):
         result = test
     elif mode == DATASET_MODE.VALID:
         result = valid
+    elif mode ==  DATASET_MODE.ALL:
+        result = filenames
 
     for f in result:
         if not tf.gfile.Exists(f):
@@ -54,36 +84,13 @@ def get_filename_queues(dataset_dir, mode):
 
 
 def read_data(filename_queue, batch_size, is_train):
-    image_bytes = IMAGE_LENGTH * IMAGE_HEIGHT * IMAGE_WIDTH * 2
-    record_bytes = IMAGE_LABEL_BYTES + image_bytes
-
-    image_float32 = IMAGE_LENGTH * IMAGE_HEIGHT * IMAGE_WIDTH
-    record_float32 = IMAGE_LABEL_BYTES + image_float32
-
-    def parse_fn(record):
-        record = tf.decode_raw(record, tf.int8)
-        record = tf.reshape(record, [record_bytes])
-
-        label = tf.slice(record, [0], [IMAGE_LABEL_BYTES])
-        label = tf.cast(label, tf.float32)
-
-        image = tf.slice(record, [IMAGE_LABEL_BYTES], [image_bytes]),
-        image = tf.reshape(image, [IMAGE_HEIGHT, IMAGE_LENGTH, IMAGE_WIDTH, 2])
-        image = tf.bitcast(image, tf.int16)
-        image = tf.cast(image, tf.float32)
-        image = tf.image.per_image_standardization(image)
-        image = tf.reshape(image, [image_float32])
-
-        record = tf.concat(0, [label, image])
-        return record
-
     examples = learn.read_batch_examples(
         file_pattern=filename_queue,
         batch_size=batch_size,
         reader=lambda: tf.FixedLengthRecordReader(record_bytes=record_bytes),
         num_threads=NUM_READ_THREADS,
         parse_fn=parse_fn,
-        num_epochs=1 if not is_train else 10)
+        num_epochs=10 if is_train else 1)
 
     if(isinstance(examples, tuple) and len(examples) == 2):
         _, examples = examples
@@ -102,3 +109,22 @@ def read_data(filename_queue, batch_size, is_train):
 def inputs(data_dir, mode, batch_size):
     filename_queue = get_filename_queues(data_dir, mode)
     return read_data(filename_queue, batch_size, mode == DATASET_MODE.TRAIN)
+
+
+def inputs_for_predict(data_dir):
+    filename_queue = get_filename_queues(data_dir, DATASET_MODE.ALL)
+    filename_queue.sort()
+    filename_queue = tf.train.string_input_producer(filename_queue, num_epochs=1, shuffle=False)
+
+    reader = tf.WholeFileReader()
+    key, image = reader.read(filename_queue)
+
+    image = tf.decode_raw(image, tf.int8)
+    image = tf.reshape(image, [IMAGE_HEIGHT, IMAGE_LENGTH, IMAGE_WIDTH, 2])
+    image = tf.bitcast(image, tf.int16)
+    image = tf.cast(image, tf.float32)
+    image = tf.image.per_image_standardization(image)
+    image = tf.expand_dims(image, 0)
+    image = tf.expand_dims(image, -1)
+    # return key, value
+    return image, None

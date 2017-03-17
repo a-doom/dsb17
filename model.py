@@ -187,15 +187,19 @@ def res_net_model(
 
     predictions = _logits_to_predictions(net)
 
-    targets = tf.one_hot(targets, depth=num_classes)
-    targets = tf.reshape(targets, [-1, num_classes])
-    loss = tf.contrib.losses.softmax_cross_entropy(net, targets)
+    if targets is not None:
+        targets = tf.one_hot(targets, depth=num_classes)
+        targets = tf.reshape(targets, [-1, num_classes])
+        loss = tf.contrib.losses.softmax_cross_entropy(net, targets)
 
-    train_op = layers.optimize_loss(
-        loss,
-        tf.contrib.framework.get_global_step(),
-        optimizer=optimizer_type,
-        learning_rate=learning_rate)
+        train_op = layers.optimize_loss(
+            loss,
+            tf.contrib.framework.get_global_step(),
+            optimizer=optimizer_type,
+            learning_rate=learning_rate)
+    else:
+        loss = None
+        train_op = None
 
     return predictions, loss, train_op
 
