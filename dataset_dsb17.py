@@ -1,9 +1,6 @@
 import tensorflow.contrib.learn.python.learn as learn
 import tensorflow as tf
-import tarfile
 import os
-import tensorflow.contrib.learn.python.learn
-# import numpy as np
 
 
 DATASET_TRAIN = 'train.bin'
